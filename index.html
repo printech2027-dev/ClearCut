@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ClearCut AI — Background Remover</title>
+  <meta name="description" content="Remove image backgrounds with remove.bg using a single self-contained HTML file." />
+  <style>
+    :root {
+      --blue: #2563eb;
+      --blue-dark: #1d4ed8;
+      --ink: #172033;
+      --muted: #667085;
+      --line: #e6eaf0;
+      --panel: #ffffff;
+      --page: #f5f7fb;
+      --success: #15803d;
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--page); color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    button, input { font: inherit; }
+    .topbar {
+      height: 72px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 clamp(18px, 5vw, 72px); background: #fff; border-bottom: 1px solid var(--line);
+    }
+    .brand { display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:-.04em; font-size:20px; }
+    .brand-mark { width:34px; height:34px; border-radius:11px; background:var(--blue); color:#fff; display:grid; place-items:center; }
+    .tag { font-size:12px; color:#475467; background:#f2f4f7; border:1px solid #eaecf0; border-radius:999px; padding:7px 11px; }
+    main { width:min(1120px, calc(100% - 32px)); margin:42px auto 64px; }
+    .hero { text-align:center; margin-bottom:28px; }
+    .eyebrow { color:var(--blue); font-size:12px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+    h1 { margin:10px 0 12px; font-size:clamp(30px, 5vw, 48px); line-height:1.08; letter-spacing:-.055em; }
+    .hero p { color:var(--muted); margin:0 auto; max-width:610px; line-height:1.65; }
+    .workspace { display:grid; grid-template-columns: 330px minmax(0,1fr); gap:18px; align-items:stretch; }
+    .panel { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); box-shadow:0 8px 30px rgba(16,24,40,.035); }
+    .controls { padding:22px; }
+    .section-title { font-weight:750; font-size:15px; margin-bottom:7px; }
+    .sub { color:var(--muted); font-size:13px; line-height:1.55; }
+    .dropzone {
+      margin-top:18px; border:1.5px dashed #cbd5e1; border-radius:15px; padding:24px 14px;
+      text-align:center; background:#fbfcff; transition:.18s; cursor:pointer;
+    }
+    .dropzone.drag { border-color:var(--blue); background:#eff6ff; }
+    .upload-icon { width:46px; height:46px; border-radius:14px; background:#eaf1ff; color:var(--blue); display:grid; place-items:center; margin:0 auto 12px; font-size:23px; }
+    .dropzone strong { display:block; font-size:14px; }
+    .dropzone small { display:block; color:var(--muted); margin-top:7px; font-size:12px; }
+    .primary, .secondary {
+      border:0; border-radius:12px; padding:12px 16px; cursor:pointer; font-weight:700; transition:.15s;
+    }
+    .primary { background:var(--blue); color:#fff; width:100%; margin-top:16px; }
+    .primary:hover { background:var(--blue-dark); }
+    .primary:disabled { opacity:.45; cursor:not-allowed; }
+    .secondary { background:#f2f4f7; color:#344054; }
+    .secondary:hover { background:#e9edf3; }
+    .control-row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:21px; }
+    .select { border:1px solid var(--line); background:white; border-radius:10px; padding:9px 10px; color:#344054; max-width:145px; }
+    .swatches { display:flex; gap:8px; margin-top:12px; }
+    .swatch { width:30px; height:30px; border:2px solid #fff; outline:1px solid #d0d5dd; border-radius:9px; cursor:pointer; }
+    .swatch.active { outline:2px solid var(--blue); }
+    .swatch.checker { background-color:#fff; background-image:linear-gradient(45deg,#e5e7eb 25%,transparent 25%),linear-gradient(-45deg,#e5e7eb 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e5e7eb 75%),linear-gradient(-45deg,transparent 75%,#e5e7eb 75%); background-size:12px 12px; background-position:0 0,0 6px,6px -6px,-6px 0; }
+    .swatch.white { background:#fff; } .swatch.black { background:#111827; } .swatch.blue { background:#2563eb; }
+    .status { display:none; margin-top:16px; padding:12px; background:#f8fafc; border:1px solid var(--line); border-radius:12px; }
+    .status.show { display:block; }
+    .status-line { display:flex; justify-content:space-between; font-size:12px; color:#475467; gap:10px; }
+    .progress { height:6px; border-radius:99px; background:#e9eef5; margin-top:9px; overflow:hidden; }
+    .progress > div { width:0%; height:100%; background:var(--blue); transition:width .2s; }
+    .workspace-right { min-height:520px; display:flex; flex-direction:column; overflow:hidden; }
+    .preview-head { padding:17px 20px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    .preview-title { font-weight:750; font-size:14px; }
+    .preview-actions { display:flex; gap:8px; }
+    .preview-stage { flex:1; padding:22px; display:grid; place-items:center; min-height:400px; position:relative; }
+    .canvas-wrap {
+      width:100%; height:100%; min-height:350px; display:grid; place-items:center; border-radius:14px; overflow:hidden;
+      background-color:#fff;
+      background-image:linear-gradient(45deg,#e9edf2 25%,transparent 25%),linear-gradient(-45deg,#e9edf2 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e9edf2 75%),linear-gradient(-45deg,transparent 75%,#e9edf2 75%);
+      background-size:24px 24px; background-position:0 0,0 12px,12px -12px,-12px 0;
+    }
+    .canvas-wrap.solid { background-image:none; }
+    canvas { max-width:100%; max-height:100%; object-fit:contain; display:block; }
+    .empty { text-align:center; color:#98a2b3; padding:30px; }
+    .empty-icon { font-size:38px; margin-bottom:10px; }
+    .tips { margin-top:18px; display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+    .tip { padding:15px 16px; background:#fff; border:1px solid var(--line); border-radius:14px; }
+    .tip b { display:block; font-size:13px; margin-bottom:5px; }
+    .tip span { color:var(--muted); font-size:12px; line-height:1.5; }
+    footer { text-align:center; color:#98a2b3; font-size:12px; margin-top:28px; }
+    @media(max-width:850px) { .workspace { grid-template-columns:1fr; } .workspace-right { min-height:440px; } .controls { order:1; } .workspace-right { order:2; } }
+    @media(max-width:520px) { main { margin-top:28px; } .preview-head { align-items:flex-start; flex-direction:column; } .preview-actions { width:100%; } .preview-actions button { flex:1; } .tips { grid-template-columns:1fr; } .preview-stage { padding:12px; } .canvas-wrap { min-height:300px; } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">✦</span> ClearCut <span style="color:#2563eb">AI</span></div>
+  </header>
+
+  <main>
+
+    <section class="workspace">
+      <aside class="panel controls">
+        <div class="section-title">Upload image</div>
+        <div class="sub">Choose a JPG, PNG or WebP image. Best results with a clear subject.</div>
+        <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="Choose image">
+          <div class="upload-icon">↑</div>
+          <strong>Drop your image here</strong>
+          <small>or click to browse · up to 20 MB</small>
+        </div>
+        <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+        <button class="primary" id="removeBtn" disabled>Remove background</button>
+
+        <div class="status" id="status">
+          <div class="status-line"><span id="statusText">Preparing AI…</span><span id="percent">0%</span></div>
+          <div class="progress"><div id="progressBar"></div></div>
+        </div>
+
+        <div class="control-row">
+          <div>
+            <div class="section-title" style="margin:0">Preview background</div>
+            <div class="sub">Display only</div>
+          </div>
+        </div>
+        <div class="swatches">
+          <button class="swatch checker active" data-bg="transparent" aria-label="Transparent"></button>
+          <button class="swatch white" data-bg="#ffffff" aria-label="White"></button>
+          <button class="swatch black" data-bg="#111827" aria-label="Black"></button>
+          <button class="swatch blue" data-bg="#2563eb" aria-label="Blue"></button>
+          <input type="color" id="customColor" class="swatch" value="#f3f4f6" title="Custom background" style="padding:0; overflow:hidden" />
+        </div>
+        <div class="control-row">
+          <div>
+            <div class="section-title" style="margin:0">Export format</div>
+            <div class="sub">Transparent only in PNG</div>
+          </div>
+          <select class="select" id="format">
+            <option value="image/png">PNG</option>
+            <option value="image/jpeg">JPG</option>
+            <option value="image/webp">WebP</option>
+          </select>
+        </div>
+        <button class="secondary" id="resetBtn" style="width:100%;margin-top:12px" disabled>Reset image</button>
+      </aside>
+
+      <section class="panel workspace-right">
+        <div class="preview-head">
+          <div>
+            <div class="preview-title">Preview</div>
+            <div class="sub" id="fileLabel">Your result will appear here</div>
+          </div>
+          <div class="preview-actions">
+            <button class="secondary" id="originalBtn" disabled>Original</button>
+            <button class="primary" id="downloadBtn" style="width:auto;margin:0" disabled>Download</button>
+          </div>
+        </div>
+        <div class="preview-stage">
+          <div class="canvas-wrap" id="canvasWrap">
+            <div class="empty" id="emptyState">
+              <div class="empty-icon">▧</div>
+              <b>Nothing here yet</b>
+              <div class="sub" style="margin-top:6px">Upload an image to get started</div>
+            </div>
+            <canvas id="resultCanvas" hidden></canvas>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <footer>ClearCut AI · Single-file HTML · Powered by remove.bg</footer>
+  </main>
+
+  <script type="module">
+    /*
+     * ==================== আপনার API এখানে বসান ====================
+     * PASTE_YOUR_API_KEY_HERE মুছে আপনার remove.bg API Key লিখুন।
+     * ইউজার ইন্টারফেসে API Settings দেখা যাবে না—সব কনফিগারেশন এখানেই।
+     * গুরুত্বপূর্ণ: একক HTML ফাইলে Key গোপন রাখা যায় না; Source Code-এ এটি দেখা যেতে পারে।
+     */
+    const API_CONFIG = {
+      apiKey: "PimQWNroFD9MZY6URmSvAC8u",
+      endpoint: "https://api.remove.bg/v1.0/removebg",
+      size: "preview" // preview, medium অথবা full
+    };
+    // ============================================================
+
+    const fileInput = document.querySelector("#fileInput");
+    const dropzone = document.querySelector("#dropzone");
+    const removeBtn = document.querySelector("#removeBtn");
+    const resetBtn = document.querySelector("#resetBtn");
+    const downloadBtn = document.querySelector("#downloadBtn");
+    const originalBtn = document.querySelector("#originalBtn");
+    const statusBox = document.querySelector("#status");
+    const statusText = document.querySelector("#statusText");
+    const percent = document.querySelector("#percent");
+    const progressBar = document.querySelector("#progressBar");
+    const fileLabel = document.querySelector("#fileLabel");
+    const canvas = document.querySelector("#resultCanvas");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    const canvasWrap = document.querySelector("#canvasWrap");
+    const emptyState = document.querySelector("#emptyState");
+    const formatSelect = document.querySelector("#format");
+    const customColor = document.querySelector("#customColor");
+
+    let sourceImage = null;
+    let sourceFile = null;
+    let transparentBlob = null;
+    let previewBg = "transparent";
+    let showOriginal = false;
+    let busy = false;
+
+    function setStatus(message, progress = 0) {
+      statusBox.classList.add("show");
+      statusText.textContent = message;
+      const p = Math.max(0, Math.min(100, Math.round(progress)));
+      percent.textContent = `${p}%`;
+      progressBar.style.width = `${p}%`;
+    }
+    function clearStatus() { statusBox.classList.remove("show"); }
+    function loadImage(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Could not read this image.")); };
+        img.src = url;
+      });
+    }
+    async function selectFile(file) {
+      if (!file) return;
+      if (!/^image\/(png|jpeg|webp)$/.test(file.type)) {
+        alert("Please choose a PNG, JPG or WebP image.");
+        return;
+      }
+      if (file.size > 20 * 1024 * 1024) {
+        alert("Please choose an image smaller than 20 MB.");
+        return;
+      }
+      try {
+        sourceFile = file;
+        sourceImage = await loadImage(file);
+        transparentBlob = null;
+        showOriginal = true;
+        canvas.width = sourceImage.naturalWidth;
+        canvas.height = sourceImage.naturalHeight;
+        drawSource();
+        emptyState.hidden = true;
+        canvas.hidden = false;
+        removeBtn.disabled = false;
+        resetBtn.disabled = false;
+        originalBtn.disabled = false;
+        downloadBtn.disabled = true;
+        fileLabel.textContent = `${file.name} · ${sourceImage.naturalWidth} × ${sourceImage.naturalHeight}`;
+        clearStatus();
+      } catch (err) {
+        alert(err.message || "Unable to open image.");
+      }
+    }
+    function drawSource() {
+      if (!sourceImage) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(sourceImage, 0, 0);
+    }
+    async function drawBlob(blob) {
+      const img = await loadImage(blob);
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+    }
+    function applyPreviewBackground() {
+      if (previewBg === "transparent") {
+        canvasWrap.classList.remove("solid");
+        canvasWrap.style.backgroundColor = "";
+        canvasWrap.style.backgroundImage = "";
+      } else {
+        canvasWrap.classList.add("solid");
+        canvasWrap.style.backgroundColor = previewBg;
+      }
+    }
+    async function showResult() {
+      if (!transparentBlob) return;
+      showOriginal = false;
+      await drawBlob(transparentBlob);
+      applyPreviewBackground();
+    }
+    async function runRemoval() {
+      if (!sourceFile || busy) return;
+      if (!API_CONFIG.apiKey || API_CONFIG.apiKey === "PASTE_YOUR_API_KEY_HERE") {
+        setStatus("Add your API key inside API_CONFIG in the HTML code.", 0);
+        alert("API key is missing. Open this HTML file in a code editor and replace PASTE_YOUR_API_KEY_HERE inside API_CONFIG.");
+        return;
+      }
+
+      busy = true;
+      removeBtn.disabled = true;
+      downloadBtn.disabled = true;
+      originalBtn.disabled = true;
+      setStatus("Uploading image to API…", 5);
+      try {
+        const form = new FormData();
+        form.append("image_file", sourceFile);
+        form.append("size", API_CONFIG.size);
+
+        const response = await fetch(API_CONFIG.endpoint, {
+          method: "POST",
+          headers: { "X-Api-Key": API_CONFIG.apiKey },
+          body: form
+        });
+
+        if (!response.ok) {
+          let detail = "";
+          try {
+            const body = await response.json();
+            detail = body?.errors?.map?.(e => e.title || e.detail).filter(Boolean).join("; ")
+              || body?.message
+              || "";
+          } catch (_) {}
+          throw new Error(`API error ${response.status}${detail ? ": " + detail : ""}`);
+        }
+
+        const contentType = response.headers.get("content-type") || "";
+        if (!contentType.includes("image")) {
+          const body = await response.text();
+          throw new Error("API did not return an image. " + body.slice(0, 180));
+        }
+        transparentBlob = await response.blob();
+        await showResult();
+        setStatus("Background removed", 100);
+        downloadBtn.disabled = false;
+      } catch (error) {
+        console.error(error);
+        const message = error?.message || "Unknown API error";
+        const friendlyMessage = message.includes("Failed to fetch")
+          ? "Network/CORS error. Check your internet connection and whether the API allows direct browser requests."
+          : message;
+        setStatus(friendlyMessage, 0);
+        alert("Background removal failed.\n\n" + friendlyMessage);
+      } finally {
+        busy = false;
+        removeBtn.disabled = !sourceFile;
+        originalBtn.disabled = !sourceFile;
+      }
+    }
+    function reset() {
+      sourceImage = null; sourceFile = null; transparentBlob = null; showOriginal = false;
+      fileInput.value = "";
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      canvas.hidden = true; emptyState.hidden = false;
+      removeBtn.disabled = true; resetBtn.disabled = true; downloadBtn.disabled = true; originalBtn.disabled = true;
+      fileLabel.textContent = "Your result will appear here";
+      clearStatus();
+    }
+    async function downloadResult() {
+      if (!sourceImage) return;
+      let blob;
+      const mime = formatSelect.value;
+      if (transparentBlob && !showOriginal) {
+        if (mime === "image/png") blob = transparentBlob;
+        else {
+          const temp = document.createElement("canvas");
+          temp.width = canvas.width; temp.height = canvas.height;
+          const tctx = temp.getContext("2d");
+          tctx.fillStyle = previewBg === "transparent" ? "#ffffff" : previewBg;
+          tctx.fillRect(0, 0, temp.width, temp.height);
+          const img = await loadImage(transparentBlob);
+          tctx.drawImage(img, 0, 0);
+          blob = await new Promise(resolve => temp.toBlob(resolve, mime, 0.92));
+        }
+      } else {
+        const temp = document.createElement("canvas");
+        temp.width = sourceImage.naturalWidth; temp.height = sourceImage.naturalHeight;
+        temp.getContext("2d").drawImage(sourceImage, 0, 0);
+        blob = await new Promise(resolve => temp.toBlob(resolve, mime, 0.92));
+      }
+      if (!blob) { alert("Could not export this format."); return; }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const ext = mime === "image/jpeg" ? "jpg" : mime === "image/webp" ? "webp" : "png";
+      a.href = url;
+      a.download = `${(sourceFile?.name || "image").replace(/\.[^.]+$/, "")}-background-removed.${ext}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    dropzone.addEventListener("click", () => fileInput.click());
+    dropzone.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); } });
+    fileInput.addEventListener("change", e => selectFile(e.target.files?.[0]));
+    ["dragenter", "dragover"].forEach(type => dropzone.addEventListener(type, e => { e.preventDefault(); dropzone.classList.add("drag"); }));
+    ["dragleave", "drop"].forEach(type => dropzone.addEventListener(type, e => { e.preventDefault(); dropzone.classList.remove("drag"); }));
+    dropzone.addEventListener("drop", e => selectFile(e.dataTransfer.files?.[0]));
+    removeBtn.addEventListener("click", runRemoval);
+    resetBtn.addEventListener("click", reset);
+    downloadBtn.addEventListener("click", downloadResult);
+    originalBtn.addEventListener("click", async () => {
+      if (!sourceImage) return;
+      showOriginal = !showOriginal;
+      originalBtn.textContent = showOriginal ? "Show result" : "Original";
+      if (showOriginal) drawSource(); else await showResult();
+    });
+    document.querySelectorAll(".swatch[data-bg]").forEach(btn => btn.addEventListener("click", async () => {
+      document.querySelectorAll(".swatch[data-bg]").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      previewBg = btn.dataset.bg;
+      applyPreviewBackground();
+    }));
+    customColor.addEventListener("input", () => {
+      document.querySelectorAll(".swatch[data-bg]").forEach(b => b.classList.remove("active"));
+      previewBg = customColor.value;
+      applyPreviewBackground();
+    });
+    formatSelect.addEventListener("change", () => {
+      if (formatSelect.value !== "image/png" && previewBg === "transparent") {
+        // Export will flatten transparency to white for JPG/WebP.
+      }
+    });
+  </script>
+</body>
+</html>
